@@ -1,0 +1,48 @@
+baseURL = 'https://iskm2.github.io'
+languageCode = 'ru-ru'
+title = 'Блог Кутного Максима'
+description = 'Личный блог'
+theme = "PaperMod"
+paginate = 5
+
+[params]
+  mainSections = ["posts"]
+
+  title = "Блог Кутного Максима"
+  description = "Личный блог, ничего особенного"
+  images = [ "https://avatars.githubusercontent.com/u/86826507" ]
+
+  defaultTheme = "dark"
+  hideFooter = true
+
+  [params.assets]
+    favicon = "/favicon.ico"
+    favicon16x16 = "/favicon-16x16.png"
+    favicon32x32 = "/favicon-32x32.png"
+    apple_touch_icon = "/apple-touch-icon.png"
+
+  [params.profileMode]
+    enabled = true
+    title = "Блог Кутного Максима"
+    subtitle = "123 hello world"
+    imageUrl = "https://avatars.githubusercontent.com/u/86826507"
+    imageWidth = 240
+    imageHeight = 240
+    imageTitle = "km2"
+
+  [[params.socialIcons]]
+    name = "github"
+    url = "https://github.com/iskm2/"
+
+[menu]
+  [[menu.main]]
+    identifier = "about"
+    name = "Обо мне"
+    url = "/about/"
+    weight = 1
+  [[menu.main]]
+    identifier = "articles"
+    name = "Статьи"
+    url = "/articles/"
+    weight = 2
+
