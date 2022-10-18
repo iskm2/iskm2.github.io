@@ -1,0 +1,107 @@
+<!doctype html><html lang=en dir=auto>
+<head><meta charset=utf-8>
+<meta http-equiv=x-ua-compatible content="IE=edge">
+<meta name=viewport content="width=device-width,initial-scale=1,shrink-to-fit=no">
+<meta name=robots content="index, follow">
+<title>Реверс-инжиниринг графического процессора 2009 года | Блог Кутного Максима</title>
+<meta name=keywords content>
+<meta name=description content="(powervr5)">
+<meta name=author content>
+<link rel=canonical href=https://iskm2.github.io/articles/gpu-reversing-ru/>
+<link crossorigin=anonymous href=/assets/css/stylesheet.bc1149f4a72aa4858d3a9f71462f75e5884ffe8073ea9d6d5761d5663d651e20.css integrity="sha256-vBFJ9KcqpIWNOp9xRi915YhP/oBz6p1tV2HVZj1lHiA=" rel="preload stylesheet" as=style>
+<script defer crossorigin=anonymous src=/assets/js/highlight.f413e19d0714851f6474e7ee9632408e58ac146fbdbe62747134bea2fa3415e0.js integrity="sha256-9BPhnQcUhR9kdOfuljJAjlisFG+9vmJ0cTS+ovo0FeA=" onload=hljs.initHighlightingOnLoad()></script>
+<link rel=icon href=https://iskm2.github.io/favicon.ico>
+<link rel=icon type=image/png sizes=16x16 href=https://iskm2.github.io/favicon-16x16.png>
+<link rel=icon type=image/png sizes=32x32 href=https://iskm2.github.io/favicon-32x32.png>
+<link rel=apple-touch-icon href=https://iskm2.github.io/apple-touch-icon.png>
+<link rel=mask-icon href=https://iskm2.github.io/safari-pinned-tab.svg>
+<meta name=theme-color content="#2e2e33">
+<meta name=msapplication-TileColor content="#2e2e33">
+<noscript>
+<style>#theme-toggle,.top-link{display:none}</style>
+</noscript><meta property="og:title" content="Реверс-инжиниринг графического процессора 2009 года">
+<meta property="og:description" content="(powervr5)">
+<meta property="og:type" content="article">
+<meta property="og:url" content="https://iskm2.github.io/articles/gpu-reversing-ru/"><meta property="og:image" content="https://avatars.githubusercontent.com/u/86826507"><meta property="article:section" content="articles">
+<meta property="og:site_name" content="Блог Кутного Максима">
+<meta name=twitter:card content="summary_large_image">
+<meta name=twitter:image content="https://avatars.githubusercontent.com/u/86826507">
+<meta name=twitter:title content="Реверс-инжиниринг графического процессора 2009 года">
+<meta name=twitter:description content="(powervr5)">
+<script type=application/ld+json>{"@context":"https://schema.org","@type":"BreadcrumbList","itemListElement":[{"@type":"ListItem","position":2,"name":"Articles","item":"https://iskm2.github.io/articles/"},{"@type":"ListItem","position":3,"name":"Реверс-инжиниринг графического процессора 2009 года","item":"https://iskm2.github.io/articles/gpu-reversing-ru/"}]}</script>
+<script type=application/ld+json>{"@context":"https://schema.org","@type":"BlogPosting","headline":"Реверс-инжиниринг графического процессора 2009 года","name":"Реверс-инжиниринг графического процессора 2009 года","description":"(powervr5)","keywords":[],"articleBody":"В связи с недавними усилиями, направленными на Asahi Linux, особенно на часть обратного проектирования графического процессора, у меня возникла идея попытаться посмотреть, смогу ли я попробовать что-то в этом духе на некотором оборудовании, которое у меня есть. После небольшого поиска в старых коробках я нашел несколько старых телефонов и несколько старых настольных графических процессоров, настольные в основном уже работают с драйверами r600 и Nouveau в mesa/linux, то же самое касается большинства мобильных устройств, которые имеют ассортимент графических процессоров Adreno и Mali, за одним исключением.\nМой Galaxy Tab 2.0 7.0 (P3110) основан на SoC Texas Instruments OMAP 4430, который включает в себя PowerVR SGX540 от Imagination Technologies, этот конкретный графический процессор относится к их поколению «Series5». Любой, кто немного знаком с миром драйверов с открытым исходным кодом, вероятно, знает, что Imagination хорошо известна тем, что выпускает только бинарные драйверы для своих графических процессоров (даже если они недавно начали объединять драйвер Vulkan в mesa). Удивительно, но часть ядра драйвера графического процессора имеет открытый исходный код, так что это будет весьма полезно.\nЕще одна важная часть этого заключается в том, что произошла большая утечка исходного кода кода драйвера той же эпохи, в которой был выпущен этот графический процессор, но из-за сомнительной законности публикации полученной из него информации я решил использовать 100% чистый подход обратного проектирования.\nНачиная Давайте посмотрим, на что способен GPU, после беглого поиска мы видим, что он поддерживает OpenGL ES 2.0, это означает, что он поддерживает шейдеры. Для тех, кто не знаком, грубый обзор того, как 3D-рендеринг обычно работает на компьютерах, заключается в том, что графический процессор получает список «примитивов», примитивы, как правило, представляют собой треугольники, квадраты или полосы любого из них, и превращает их в пиксели. Эта процедура была довольно жесткой еще во времена OpenGL 1.0, но когда возникла потребность в более сложных и реалистичных сценах, были введены «шейдеры», шейдеры, по сути, являются точками в конвейере преобразования примитивов - пикселей, где программист может указать пользовательские код для изменения результатов рендеринга.\nЧтобы быть более конкретным, при рендеринге с использованием OpenGL 2.0 программист имеет доступ к двум типам шейдеров, вершинным шейдерам и фрагментным шейдерам, шейдеры — это программы, которые запускаются один раз для каждого пикселя, покрытого примитивом (представьте, например, внутреннюю часть закрашенного треугольника). Вершинные шейдеры обычно используются для перемещения или вращения объектов или выполнения над ними деформации, в то время как фрагментные шейдеры обычно используются для освещения и текстурирования.\nЭто означает, что, как и у большинства других программируемых аппаратных графических процессоров, есть свой собственный язык ассемблера, и самое интересное заключается в том, что сборка графического процессора, как правило, намного более уникальна, чем код сборки процессора, в целом существует больше степеней свободы для проектирования, например. Графические процессоры Intel имеют высокоуровневые инструкции управления потоком (циклы, операторы if).\nИтак, это ставит перед нами первую (и, возможно, самую важную) цель — узнать, как именно выглядит ассемблерный код, работающий на этом графическом процессоре.\nСначала давайте посмотрим, говорит ли производитель что-нибудь полезное об этом, если мы будем искать документацию, относящуюся к конкретному производителю, мы можем найти этот pdf файл , который содержит очень общую блок-схему графического процессора и некоторую информацию о том, как в нем работает 3D-рендеринг, конечно, не достаточно, чтобы сделать что-нибудь полезное в данный момент. Но есть некоторая хорошая исходная информация, во-первых, теперь мы знаем, что архитектура шейдеров унифицирована , что означает, что вершинные и фрагментные шейдеры используют один и тот же ассемблерный код (это не так для многих старых графических процессоров), во-вторых, мы можем видеть что графический процессор запускает «микроядро», которое, по-видимому, обрабатывает прерывания.\nОни также, кажется, предоставляют «инструмент профилирования шейдеров», который может показать разборку шейдеров на графических процессорах PowerVR, но своими словами:\nЧто ж, информации было немного, но определенно больше, чем я ожидал от них.\nПриступаем к работе Одна вещь, которая очень важна для этого процесса, заключается в том, что планшет в данный момент работает под управлением Android (он рутирован и работает с пользовательским ПЗУ), поэтому весь реверс-инжиниринг на данный момент должен быть выполнен с помощью Android, и часть тестовая программа должна быть написана на Java, в целом Android стал причиной многих проблем. Хорошо, что Google предоставляет очень простой пример OpenGL ES с использованием Android Native Development Kit и C++ здесь.\nПервым шагом к обратному проектированию архитектуры является наличие для нее двоичных файлов, что не так просто, как кажется. В OpenGL основным способом компиляции шейдеров является компиляция во время выполнения, а затем их объединение в «программу». Мне немного повезло, так как OpenGL ES 2.0 имеет расширение «OES_get_program_binary», которое поддерживается реализацией драйвера на Android (скорее всего, предназначено для использования 3D-приложениями для кэширования шейдеров, поскольку мощность мобильных устройств довольно ограничена), поэтому получение Программные двоичные файлы так же просто, как скомпилировать их и вызвать «glGetProgramBinaryOES» с программой и другими соответствующими данными в качестве аргумента, код для этого:\n GLint length = 0; glGetProgramiv(program, GL_PROGRAM_BINARY_LENGTH_OES, \u0026length); std::vector buffer(length); GLenum format = 0; glGetProgramBinaryOES(program, length, NULL, \u0026format, buffer.data()); ``` ... Продолжение следует. ","wordCount":"792","inLanguage":"en","datePublished":"0001-01-01T00:00:00Z","dateModified":"0001-01-01T00:00:00Z","mainEntityOfPage":{"@type":"WebPage","@id":"https://iskm2.github.io/articles/gpu-reversing-ru/"},"publisher":{"@type":"Organization","name":"Блог Кутного Максима","logo":{"@type":"ImageObject","url":"https://iskm2.github.io/favicon.ico"}}}</script>
+</head>
+<body class=dark id=top>
+<script>localStorage.getItem("pref-theme")==="light"&&document.body.classList.remove('dark')</script>
+<header class=header>
+<nav class=nav>
+<div class=logo>
+<a href=https://iskm2.github.io accesskey=h title="Блог Кутного Максима (Alt + H)">Блог Кутного Максима</a>
+<div class=logo-switches>
+<button id=theme-toggle accesskey=t title="(Alt + T)"><svg id="moon" xmlns="http://www.w3.org/2000/svg" width="24" height="18" viewBox="0 0 24 24" fill="none" stroke="currentcolor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.79A9 9 0 1111.21 3 7 7 0 0021 12.79z"/></svg><svg id="sun" xmlns="http://www.w3.org/2000/svg" width="24" height="18" viewBox="0 0 24 24" fill="none" stroke="currentcolor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg>
+</button>
+</div>
+</div>
+<ul id=menu>
+<li>
+<a href=https://iskm2.github.io/about/ title="Обо мне">
+<span>Обо мне</span>
+</a>
+</li>
+<li>
+<a href=https://iskm2.github.io/articles/ title=Статьи>
+<span>Статьи</span>
+</a>
+</li>
+</ul>
+</nav>
+</header>
+<main class=main>
+<article class=post-single>
+<header class=post-header>
+<h1 class=post-title>
+Реверс-инжиниринг графического процессора 2009 года
+</h1>
+<div class=post-meta>
+</div>
+</header>
+<div class=post-content><p>В связи с недавними усилиями, направленными на Asahi Linux, особенно на часть обратного проектирования графического процессора, у меня возникла идея попытаться посмотреть, смогу ли я попробовать что-то в этом духе на некотором оборудовании, которое у меня есть. После небольшого поиска в старых коробках я нашел несколько старых телефонов и несколько старых настольных графических процессоров, настольные в основном уже работают с драйверами r600 и Nouveau в mesa/linux, то же самое касается большинства мобильных устройств, которые имеют ассортимент графических процессоров Adreno и Mali, за одним исключением.</p>
+<p>Мой Galaxy Tab 2.0 7.0 (P3110) основан на SoC Texas Instruments OMAP 4430, который включает в себя PowerVR SGX540 от Imagination Technologies, этот конкретный графический процессор относится к их поколению «Series5». Любой, кто немного знаком с миром драйверов с открытым исходным кодом, вероятно, знает, что Imagination хорошо известна тем, что выпускает только бинарные драйверы для своих графических процессоров (даже если они недавно начали объединять драйвер Vulkan в mesa). Удивительно, но часть ядра драйвера графического процессора имеет открытый исходный код, так что это будет весьма полезно.</p>
+<p>Еще одна важная часть этого заключается в том, что произошла большая утечка исходного кода кода драйвера той же эпохи, в которой был выпущен этот графический процессор, но из-за сомнительной законности публикации полученной из него информации я решил использовать 100% чистый подход обратного проектирования.</p>
+<h1 id=начиная>Начиная<a hidden class=anchor aria-hidden=true href=#начиная>#</a></h1>
+<p>Давайте посмотрим, на что способен GPU, после беглого поиска мы видим, что он поддерживает OpenGL ES 2.0, это означает, что он поддерживает шейдеры. Для тех, кто не знаком, грубый обзор того, как 3D-рендеринг обычно работает на компьютерах, заключается в том, что графический процессор получает список «примитивов», примитивы, как правило, представляют собой треугольники, квадраты или полосы любого из них, и превращает их в пиксели. Эта процедура была довольно жесткой еще во времена OpenGL 1.0, но когда возникла потребность в более сложных и реалистичных сценах, были введены «шейдеры», шейдеры, по сути, являются точками в конвейере преобразования примитивов -> пикселей, где программист может указать пользовательские код для изменения результатов рендеринга.</p>
+<p>Чтобы быть более конкретным, при рендеринге с использованием OpenGL 2.0 программист имеет доступ к двум типам шейдеров, <strong>вершинным шейдерам</strong> и <strong>фрагментным шейдерам</strong>, шейдеры — это программы, которые запускаются один раз для каждого пикселя, покрытого примитивом (представьте, например, внутреннюю часть закрашенного треугольника). Вершинные шейдеры обычно используются для перемещения или вращения объектов или выполнения над ними деформации, в то время как фрагментные шейдеры обычно используются для освещения и текстурирования.</p>
+<p>Это означает, что, как и у большинства других программируемых аппаратных графических процессоров, есть свой собственный язык ассемблера, и самое интересное заключается в том, что сборка графического процессора, как правило, намного более уникальна, чем код сборки процессора, в целом существует больше степеней свободы для проектирования, например. Графические процессоры Intel имеют высокоуровневые инструкции управления потоком (циклы, операторы if).</p>
+<p>Итак, это ставит перед нами первую (и, возможно, самую важную) цель — узнать, как именно выглядит ассемблерный код, работающий на этом графическом процессоре.</p>
+<p>Сначала давайте посмотрим, говорит ли производитель что-нибудь полезное об этом, если мы будем искать документацию, относящуюся к конкретному производителю, мы можем найти этот <a href=https://web.archive.org/web/20190712215029/http://cdn.imgtec.com/sdk-documentation/PowerVR+Series5.Architecture+Guide+for+Developers.pdf>pdf файл</a> , который содержит очень общую блок-схему графического процессора и некоторую информацию о том, как в нем работает 3D-рендеринг, конечно, не достаточно, чтобы сделать что-нибудь полезное в данный момент. Но есть некоторая хорошая исходная информация, во-первых, теперь мы знаем, что архитектура шейдеров унифицирована , что означает, что вершинные и фрагментные шейдеры используют один и тот же ассемблерный код (это не так для многих старых графических процессоров), во-вторых, мы можем видеть что графический процессор запускает «микроядро», которое, по-видимому, обрабатывает прерывания.</p>
+<p>Они также, кажется, предоставляют «инструмент профилирования шейдеров», который может показать разборку шейдеров на графических процессорах PowerVR, но своими словами:</p>
+<p><img loading=lazy src=/img/powervr5-1/nda.png alt=M>
+</p>
+<p>Что ж, информации было немного, но определенно больше, чем я ожидал от них.</p>
+<h1 id=приступаем-к-работе>Приступаем к работе<a hidden class=anchor aria-hidden=true href=#приступаем-к-работе>#</a></h1>
+<p>Одна вещь, которая очень важна для этого процесса, заключается в том, что планшет в данный момент работает под управлением Android (он рутирован и работает с пользовательским ПЗУ), поэтому весь реверс-инжиниринг на данный момент должен быть выполнен с помощью Android, и часть тестовая программа должна быть написана на Java, в целом Android стал причиной многих проблем. Хорошо, что Google предоставляет очень простой пример OpenGL ES с использованием Android Native Development Kit и C++ здесь.</p>
+<p>Первым шагом к обратному проектированию архитектуры является наличие для нее двоичных файлов, что не так просто, как кажется. В OpenGL основным способом компиляции шейдеров является компиляция во время выполнения, а затем их объединение в «программу». Мне немного повезло, так как OpenGL ES 2.0 имеет расширение «OES_get_program_binary», которое поддерживается реализацией драйвера на Android (скорее всего, предназначено для использования 3D-приложениями для кэширования шейдеров, поскольку мощность мобильных устройств довольно ограничена), поэтому получение Программные двоичные файлы так же просто, как скомпилировать их и вызвать «glGetProgramBinaryOES» с программой и другими соответствующими данными в качестве аргумента, код для этого:</p>
+<pre tabindex=0><code>    GLint length = 0;
+    glGetProgramiv(program, GL_PROGRAM_BINARY_LENGTH_OES, &amp;length);
+    std::vector&lt;GLubyte&gt; buffer(length);
+    GLenum format = 0;
+    glGetProgramBinaryOES(program, length, NULL, &amp;format, buffer.data());
+    ```
+
+...
+Продолжение следует.
+</code></pre>
+</div>
+<footer class=post-footer>
+<ul class=post-tags>
+</ul>
+</footer>
+</article>
+</main>
+<a href=#top aria-label="go to top" title="Go to Top (Alt + G)" class=top-link id=top-link accesskey=g><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 12 6" fill="currentcolor"><path d="M12 6H0l6-6z"/></svg>
+</a>
+<script>let menu=document.getElementById('menu');menu&&(menu.scrollLeft=localStorage.getItem("menu-scroll-position"),menu.onscroll=function(){localStorage.setItem("menu-scroll-position",menu.scrollLeft)}),document.querySelectorAll('a[href^="#"]').forEach(a=>{a.addEventListener("click",function(b){b.preventDefault();var a=this.getAttribute("href").substr(1);window.matchMedia('(prefers-reduced-motion: reduce)').matches?document.querySelector(`[id='${decodeURIComponent(a)}']`).scrollIntoView():document.querySelector(`[id='${decodeURIComponent(a)}']`).scrollIntoView({behavior:"smooth"}),a==="top"?history.replaceState(null,null," "):history.pushState(null,null,`#${a}`)})})</script>
+<script>var mybutton=document.getElementById("top-link");window.onscroll=function(){document.body.scrollTop>800||document.documentElement.scrollTop>800?(mybutton.style.visibility="visible",mybutton.style.opacity="1"):(mybutton.style.visibility="hidden",mybutton.style.opacity="0")}</script>
+<script>document.getElementById("theme-toggle").addEventListener("click",()=>{document.body.className.includes("dark")?(document.body.classList.remove('dark'),localStorage.setItem("pref-theme",'light')):(document.body.classList.add('dark'),localStorage.setItem("pref-theme",'dark'))})</script>
+</body>
+</html>
